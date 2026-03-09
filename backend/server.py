@@ -15,7 +15,7 @@ COLLECTION_NAME = "todo_lists"
 MONGODB_URI = os.environ["MONGODB_URI"]
 DEBUG = os.environ.get("DEBUG", "").strip().lower() in {"1", "true", "on", "yes"}
 
-
+# function to manage lifecycle
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup:
@@ -30,30 +30,29 @@ async def lifespan(app: FastAPI):
     todo_lists = database.get_collection(COLLECTION_NAME)
     app.todo_dal = ToDoDAL(todo_lists)
 
-    # Yield back to FastAPI Application:
     yield
 
-    # Shutdown:
+    # Server shut down code
     client.close()
 
 
 app = FastAPI(lifespan=lifespan, debug=DEBUG)
 
-
+# GET /api/lists
 @app.get("/api/lists")
 async def get_all_lists() -> list[ListSummary]:
     return [i async for i in app.todo_dal.list_todo_lists()]
 
-
+# initialize pydantic basemodel
 class NewList(BaseModel):
     name: str
 
-
+# initialize pydantic basemodel
 class NewListResponse(BaseModel):
     id: str
     name: str
 
-
+# POST /api/lists
 @app.post("/api/lists", status_code=status.HTTP_201_CREATED)
 async def create_todo_list(new_list: NewList) -> NewListResponse:
     return NewListResponse(
@@ -64,7 +63,6 @@ async def create_todo_list(new_list: NewList) -> NewListResponse:
 
 @app.get("/api/lists/{list_id}")
 async def get_list(list_id: str) -> ToDoList:
-    """Get a single to-do list"""
     return await app.todo_dal.get_todo_list(list_id)
 
 
